@@ -1,0 +1,129 @@
+---
+title: "Lab 6"
+author: Adaeze Obinelo
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+---
+
+## Quarto
+
+```{r}
+
+mt_url <- "https://raw.githubusercontent.com/USCbiostats/data-science-data/master/00_mtsamples/mtsamples.csv"
+
+tmp <- "mt.csv"
+
+if (!file.exists(tmp)) {
+  download.file(
+    url      = mt_url,
+    destfile = tmp,
+    # method   = "libcurl", timeout = 1000 (you may need this option)
+  )
+}
+
+
+```
+
+```{r}
+library(tidytext)
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+mt <- read_csv("mt.csv")
+
+```
+
+## Q1
+
+```{r}
+mt %>% 
+  count(medical_specialty) %>% 
+  arrange(desc(n))
+
+spec <- mt[!grepl("Consult", mt$medical_specialty),]
+spec <- spec[!grepl("Chart", spec$medical_specialty),]
+spec <- spec[!grepl("Discharge", spec$medical_specialty),]
+spec <- spec[!grepl("Office Notes", spec$medical_specialty),]
+spec <- spec[!grepl("Letter", spec$medical_specialty),]
+
+
+spec %>% 
+  count(medical_specialty) %>% 
+  arrange(desc(n))
+  
+
+library(ggplot2)
+ggplot(spec, aes(x=medical_specialty)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 90)) 
+
+```
+
+We have 40 specialties represented
+
+No the spread is not super even;
+
+-   Surgery overpowers the sample in terms of notes, ENT has far fewer notes than the other specialties
+
+```{r}
+spec %>% 
+  unnest_tokens(token, transcription) %>% 
+  count(token, sort = TRUE) %>% 
+  top_n(20, n)
+
+  
+```
+
+We see that a lot of the top 20 words are filler words such as "the", "and", "was" and "of"- i.e. stopwords
+
+## Q3
+
+```{r}
+spec %>% 
+  unnest_tokens(token, transcription) %>%
+  anti_join(stop_words, by = c("token"= "word")) %>%
+  count(token, sort = TRUE)
+
+```
+
+## Q4
+
+```{r}
+spec %>% 
+  unnest_ngrams(ngram, transcription, n = 2) %>%
+  count(ngram, sort = TRUE)
+
+```
+
+## Q5
+
+```{r}
+
+spec %>% 
+  unnest_ngrams(ngram, transcription, n = 2) %>% 
+  separate(ngram, into = c("word1", "word2"), sep = " ") %>% 
+  select(word1, word2)
+
+spec %>%
+  unnest_ngrams(ngram, transcription, n = 2) %>%
+  separate(ngram, into = c("word1", "word2"), sep = " ") %>%
+  select(word1, word2) %>%
+  filter(word2 == "incision")
+```
+
+## Q6: Top 5 words used by each specialty
+
+```{r}
+
+spec %>% 
+  group_by(medical_specialty) %>% 
+  unnest_tokens(token, transcription) %>%
+  anti_join(stop_words, by = c("token"= "word")) %>%
+  count(token, sort = TRUE) %>% 
+  group_by(medical_specialty) %>% 
+  arrange(medical_specialty, n) %>% 
+  top_n(5, n)
+ 
+```
